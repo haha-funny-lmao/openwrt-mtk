@@ -1,0 +1,32 @@
+--- a/net/dsa/tag_mtk.c
++++ b/net/dsa/tag_mtk.c
+@@ -78,16 +78,22 @@ static struct sk_buff *mtk_tag_rcv(struc
+ 	int port;
+ 	__be16 *phdr;
+ 
+-	if (unlikely(!pskb_may_pull(skb, MTK_HDR_LEN)))
+-		return NULL;
++	if (dev->features & NETIF_F_HW_VLAN_CTAG_RX) {
++		hdr = ntohs(skb->vlan_proto);
++		skb->vlan_proto = 0;
++		skb->vlan_tci = 0;
++	} else {
++		if (unlikely(!pskb_may_pull(skb, MTK_HDR_LEN)))
++			return NULL;
+ 
+-	phdr = dsa_etype_header_pos_rx(skb);
+-	hdr = ntohs(*phdr);
++		phdr = dsa_etype_header_pos_rx(skb);
++		hdr = ntohs(*phdr);
+ 
+-	/* Remove MTK tag and recalculate checksum. */
+-	skb_pull_rcsum(skb, MTK_HDR_LEN);
++		/* Remove MTK tag and recalculate checksum. */
++		skb_pull_rcsum(skb, MTK_HDR_LEN);
+ 
+-	dsa_strip_etype_header(skb, MTK_HDR_LEN);
++		dsa_strip_etype_header(skb, MTK_HDR_LEN);
++	}
+ 
+ 	/* Get source port information */
+ 	port = (hdr & MTK_HDR_RECV_SOURCE_PORT_MASK);
