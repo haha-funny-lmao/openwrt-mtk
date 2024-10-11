@@ -1,0 +1,20 @@
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -63,6 +63,7 @@
+ #include <linux/mpls.h>
+ #include <linux/kcov.h>
+ #include <linux/if.h>
++#include <net/ra_nat.h>
+ 
+ #include <net/protocol.h>
+ #include <net/dst.h>
+@@ -2126,6 +2127,9 @@ int pskb_expand_head(struct sk_buff *skb
+ 	memcpy((struct skb_shared_info *)(data + size),
+ 	       skb_shinfo(skb),
+ 	       offsetof(struct skb_shared_info, frags[skb_shinfo(skb)->nr_frags]));
++	
++	/* headroom copy */
++	memcpy(data, skb->head, FOE_INFO_LEN);
+ 
+ 	/*
+ 	 * if shinfo is shared we must drop the old head gracefully, but if it

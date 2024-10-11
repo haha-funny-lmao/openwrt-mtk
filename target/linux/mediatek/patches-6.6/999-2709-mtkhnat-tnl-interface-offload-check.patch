@@ -1,0 +1,68 @@
+--- a/include/net/netfilter/nf_flow_table.h
++++ b/include/net/netfilter/nf_flow_table.h
+@@ -13,6 +13,7 @@
+ #include <linux/if_pppox.h>
+ #include <linux/ppp_defs.h>
+ 
++
+ struct nf_flowtable;
+ struct nf_flow_rule;
+ struct flow_offload;
+@@ -192,6 +193,7 @@ struct flow_offload {
+ #define FLOW_OFFLOAD_PATH_DSA           BIT(3)
+ #define FLOW_OFFLOAD_PATH_DSLITE	BIT(4)
+ #define FLOW_OFFLOAD_PATH_6RD		BIT(5)
++#define FLOW_OFFLOAD_PATH_TNL          	BIT(6)
+ 
+ struct flow_offload_hw_path_t {
+ 	struct net_device *dev;
+--- a/net/l2tp/l2tp_ppp.c
++++ b/net/l2tp/l2tp_ppp.c
+@@ -93,6 +93,8 @@
+ #include <net/udp.h>
+ #include <net/inet_common.h>
+ 
++#include <net/netfilter/nf_flow_table.h>
++
+ #include <asm/byteorder.h>
+ #include <linux/atomic.h>
+ 
+@@ -123,9 +125,11 @@ struct pppol2tp_session {
+ };
+ 
+ static int pppol2tp_xmit(struct ppp_channel *chan, struct sk_buff *skb);
+-
++static int l2tp_ppp_flow_offload_check(struct ppp_channel *chan,
++                                      struct flow_offload_hw_path_t *path);
+ static const struct ppp_channel_ops pppol2tp_chan_ops = {
+ 	.start_xmit =  pppol2tp_xmit,
++	.flow_offload_check = l2tp_ppp_flow_offload_check,
+ };
+ 
+ static const struct proto_ops pppol2tp_ops;
+@@ -328,6 +332,25 @@ error:
+ 	return error;
+ }
+ 
++
++static int l2tp_ppp_flow_offload_check(struct ppp_channel *chan,
++                                      struct flow_offload_hw_path_t *path)
++{
++       struct sock *sk = (struct sock *)chan->private;
++       struct l2tp_session *session;
++
++       if (path->flags & FLOW_OFFLOAD_PATH_TNL)
++               return -EEXIST;
++
++       session = pppol2tp_sock_to_session(sk);
++       if (!session)
++               return -EINVAL;
++
++       path->flags |= FLOW_OFFLOAD_PATH_TNL;
++
++       return 0;
++}
++
+ /* Transmit function called by generic PPP driver.  Sends PPP frame
+  * over PPPoL2TP socket.
+  *
