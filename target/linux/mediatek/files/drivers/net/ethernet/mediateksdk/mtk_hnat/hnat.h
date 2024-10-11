@@ -1230,8 +1230,6 @@ enum FoeIpAct {
 #define IS_DSA_1G_LAN(dev) (!strncmp(dev->name, "lan", 3) &&		       \
 			    strcmp(dev->name, "lan5"))
 #define IS_DSA_WAN(dev) (!strncmp(dev->name, "wan", 3))
-#define IS_DSA_TAG_PROTO_MXL862_8021Q(dp)				       \
-	(dp->cpu_dp->tag_ops->proto == DSA_TAG_PROTO_MXL862_8021Q)
 #define NONE_DSA_PORT 0xff
 #define MAX_CRSN_NUM 32
 #define IPV6_HDR_LEN 40
@@ -1301,7 +1299,7 @@ static inline void hnat_check_release_entry_lock(struct foe_entry *entry)
 
 int hnat_dsa_fill_stag(const struct net_device *netdev,
 		       struct foe_entry *entry,
-		       struct flow_offload_hw_path *hw_path,
+		       struct flow_offload_hw_path_t *hw_path,
 		       u16 eth_proto, int mape);
 int hnat_dsa_get_port(struct net_device **dev);
 static inline bool hnat_dsa_is_enable(struct mtk_hnat *priv)

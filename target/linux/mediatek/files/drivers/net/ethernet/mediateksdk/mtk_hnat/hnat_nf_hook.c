@@ -209,10 +209,7 @@ static void foe_clear_ethdev_bind_entries(struct net_device *dev)
 		if (IS_ERR(dp))
 			return;
 
-		if (IS_DSA_TAG_PROTO_MXL862_8021Q(dp))
-			dsa_tag = port_id + BIT(11);
-		else
-			dsa_tag = BIT(port_id);
+		dsa_tag = BIT(port_id);
 	}
 
 	for (i = 0; i < CFG_PPE_NUM; i++) {
@@ -225,15 +222,9 @@ static void foe_clear_ethdev_bind_entries(struct net_device *dev)
 							   entry->ipv6_5t_route.iblk2.dp == gmac;
 
 			if (match_dev && port_id >= 0) {
-				if (IS_DSA_TAG_PROTO_MXL862_8021Q(dp)) {
-					match_dev = (IS_IPV4_GRP(entry)) ?
-						entry->ipv4_hnapt.vlan1 == dsa_tag :
-						entry->ipv6_5t_route.vlan1 == dsa_tag;
-				} else {
-					match_dev = (IS_IPV4_GRP(entry)) ?
-						!!(entry->ipv4_hnapt.etype & dsa_tag) :
-						!!(entry->ipv6_5t_route.etype & dsa_tag);
-				}
+				match_dev = (IS_IPV4_GRP(entry)) ?
+					!!(entry->ipv4_hnapt.etype & dsa_tag) :
+					!!(entry->ipv6_5t_route.etype & dsa_tag);
 			}
 
 			if (match_dev) {
@@ -972,7 +963,7 @@ static unsigned int
 mtk_hnat_ipv4_nf_pre_routing(void *priv, struct sk_buff *skb,
 			     const struct nf_hook_state *state)
 {
-	struct flow_offload_hw_path hw_path = { 0 };
+	struct flow_offload_hw_path_t hw_path = { 0 };
 
 	if (!skb)
 		goto drop;
@@ -1158,7 +1149,7 @@ drop:
 
 static int hnat_ipv6_get_nexthop(struct sk_buff *skb,
 					  const struct net_device *out,
-					  struct flow_offload_hw_path *hw_path)
+					  struct flow_offload_hw_path_t *hw_path)
 {
 	const struct in6_addr *ipv6_nexthop;
 	struct neighbour *neigh = NULL;
@@ -1194,7 +1185,7 @@ static int hnat_ipv6_get_nexthop(struct sk_buff *skb,
 
 static int hnat_ipv4_get_nexthop(struct sk_buff *skb,
 					  const struct net_device *out,
-					  struct flow_offload_hw_path *hw_path)
+					  struct flow_offload_hw_path_t *hw_path)
 {
 	u32 nexthop;
 	struct neighbour *neigh;
@@ -1253,7 +1244,7 @@ static u16 ppe_get_chkbase(struct iphdr *iph)
 }
 
 struct foe_entry ppe_fill_L2_info(struct foe_entry entry,
-				  struct flow_offload_hw_path *hw_path)
+				  struct flow_offload_hw_path_t *hw_path)
 {
 	switch ((int)entry.bfib1.pkt_type) {
 	case IPV4_HNAPT:
@@ -1282,7 +1273,7 @@ struct foe_entry ppe_fill_L2_info(struct foe_entry entry,
 }
 
 struct foe_entry ppe_fill_info_blk(struct foe_entry entry,
-				   struct flow_offload_hw_path *hw_path)
+				   struct flow_offload_hw_path_t *hw_path)
 {
 	entry.bfib1.psn = (hw_path->flags & FLOW_OFFLOAD_PATH_PPPOE) ? 1 : 0;
 	entry.bfib1.vlan_layer += (hw_path->flags & FLOW_OFFLOAD_PATH_VLAN) ? 1 : 0;
@@ -1367,7 +1358,7 @@ static inline void hnat_get_filled_unbind_entry(struct sk_buff *skb,
  * return negative value for data is still constructing
  */
 static inline int hnat_offload_engine_done(struct sk_buff *skb,
-					   struct flow_offload_hw_path *hw_path)
+					   struct flow_offload_hw_path_t *hw_path)
 {
 	struct dst_entry *dst = skb_dst(skb);
 
@@ -1440,7 +1431,7 @@ int hnat_bind_crypto_entry(struct sk_buff *skb, const struct net_device *dev, in
 	u32 gmac = NR_DISCARD;
 	int udp = 0;
 	struct mtk_mac *mac = netdev_priv(dev);
-	struct flow_offload_hw_path hw_path = { .dev = (struct net_device *) dev,
+	struct flow_offload_hw_path_t hw_path = { .dev = (struct net_device *) dev,
 						.virt_dev = (struct net_device *) dev };
 
 	if (!tnl_toggle) {
@@ -1591,7 +1582,7 @@ EXPORT_SYMBOL(hnat_bind_crypto_entry);
 static unsigned int skb_to_hnat_info(struct sk_buff *skb,
 				     const struct net_device *dev,
 				     struct foe_entry *foe,
-				     struct flow_offload_hw_path *hw_path)
+				     struct flow_offload_hw_path_t *hw_path)
 {
 	struct net_device *master_dev = (struct net_device *)dev;
 	struct net_device *slave_dev[10];
@@ -3173,12 +3164,12 @@ int mtk_464xlat_post_process(struct sk_buff *skb, const struct net_device *out)
 static unsigned int mtk_hnat_nf_post_routing(
 	struct sk_buff *skb, const struct net_device *out,
 	int (*fn)(struct sk_buff *, const struct net_device *,
-		  struct flow_offload_hw_path *),
+		  struct flow_offload_hw_path_t *),
 	const char *func)
 {
 	struct ethhdr eth = {0};
 	struct foe_entry *entry;
-	struct flow_offload_hw_path hw_path = { .dev = (struct net_device*)out,
+	struct flow_offload_hw_path_t hw_path = { .dev = (struct net_device*)out,
 						.virt_dev = (struct net_device*)out };
 	const struct net_device *arp_dev = out;
 	bool is_virt_dev = false;
