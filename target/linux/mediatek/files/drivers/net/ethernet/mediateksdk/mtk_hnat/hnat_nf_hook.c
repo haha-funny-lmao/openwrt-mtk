@@ -209,10 +209,7 @@ static void foe_clear_ethdev_bind_entries(struct net_device *dev)
 		if (IS_ERR(dp))
 			return;
 
-		if (IS_DSA_TAG_PROTO_MXL862_8021Q(dp))
-			dsa_tag = port_id + BIT(11);
-		else
-			dsa_tag = BIT(port_id);
+		dsa_tag = BIT(port_id);
 	}
 
 	for (i = 0; i < CFG_PPE_NUM; i++) {
@@ -225,15 +222,9 @@ static void foe_clear_ethdev_bind_entries(struct net_device *dev)
 							   entry->ipv6_5t_route.iblk2.dp == gmac;
 
 			if (match_dev && port_id >= 0) {
-				if (IS_DSA_TAG_PROTO_MXL862_8021Q(dp)) {
-					match_dev = (IS_IPV4_GRP(entry)) ?
-						entry->ipv4_hnapt.vlan1 == dsa_tag :
-						entry->ipv6_5t_route.vlan1 == dsa_tag;
-				} else {
-					match_dev = (IS_IPV4_GRP(entry)) ?
-						!!(entry->ipv4_hnapt.sp_tag & dsa_tag) :
-						!!(entry->ipv6_5t_route.sp_tag & dsa_tag);
-				}
+				match_dev = (IS_IPV4_GRP(entry)) ?
+					!!(entry->ipv4_hnapt.sp_tag & dsa_tag) :
+					!!(entry->ipv6_5t_route.sp_tag & dsa_tag);
 			}
 
 			if (match_dev) {

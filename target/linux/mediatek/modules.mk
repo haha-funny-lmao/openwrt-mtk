@@ -41,12 +41,12 @@ $(eval $(call KernelPackage,iio-mt6577-auxadc))
 define KernelPackage/mediatek_hnat
   SUBMENU:=Network Devices
   TITLE:=Mediatek HNAT module
-  DEPENDS:=@TARGET_mediatek +kmod-nf-conntrack
+  DEPENDS:=@TARGET_mediatek +kmod-nf-flow
   AUTOLOAD:=$(call AutoLoad,20,mtkhnat)
   KCONFIG:= \
 	CONFIG_BRIDGE_NETFILTER=y \
 	CONFIG_NETFILTER_FAMILY_BRIDGE=y \
-	CONFIG_NET_MEDIATEK_HNAT=y
+	CONFIG_NET_MEDIATEK_HNAT=y 
   FILES:= \
         $(LINUX_DIR)/drivers/net/ethernet/mediateksdk/mtk_hnat/mtkhnat.ko
 endef
