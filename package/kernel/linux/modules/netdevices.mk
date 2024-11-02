@@ -508,6 +508,21 @@ endef
 
 $(eval $(call KernelPackage,phy-airoha-en8811h))
 
+define KernelPackage/phy-airoha-en8811h-sdk
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  TITLE:=Airoha EN8811H SDK 2.5G Ethernet PHY
+  DEPENDS:=+kmod-libphy
+  KCONFIG:=CONFIG_AIR_EN8811H_SDK_PHY
+  FILES:= \
+   $(LINUX_DIR)/drivers/net/phy/air_en8811h_sdk.ko
+  AUTOLOAD:=$(call AutoLoad,18,air_en8811h_sdk,1)
+endef
+
+define KernelPackage/phy-airoha-en8811h-sdk/description
+  Kernel modules for Airoha EN8811H 2.5G Ethernet PHY MTK SDK
+endef
+
+$(eval $(call KernelPackage,phy-airoha-en8811h-sdk))
 
 define KernelPackage/phy-aquantia
   SUBMENU:=$(NETWORK_DEVICES_MENU)
