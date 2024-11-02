@@ -693,7 +693,6 @@ static int mt7531_sw_detect(struct gsw_mt753x *gsw, struct chip_rev *crev)
 
 static int mt7988_sw_detect(struct gsw_mt753x *gsw, struct chip_rev *crev)
 {
-	const char *model;
 	struct device_node *np;
 
 	np = of_find_compatible_node(NULL, NULL, "mediatek,mt7988-switch");
@@ -1039,7 +1038,6 @@ static int mt7988_sw_init(struct gsw_mt753x *gsw)
 {
 	struct device_node *switch_node = NULL;
 	struct platform_device *pdev;
-	int i;
 	u32 val;
 	u32 pmcr;
 	u32 speed;

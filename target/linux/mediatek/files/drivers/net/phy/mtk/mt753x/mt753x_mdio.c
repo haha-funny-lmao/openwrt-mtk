@@ -18,6 +18,7 @@
 #include <linux/of_net.h>
 #include <linux/of_irq.h>
 #include <linux/phy.h>
+#include <linux/version.h>
 
 #include "mt753x.h"
 #include "mt753x_swconfig.h"
@@ -279,9 +280,12 @@ static void mt753x_load_port_cfg(struct gsw_mt753x *gsw)
 		}
 
 		port_cfg->np = port_np;
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0)
+		if (of_get_phy_mode(port_np, &port_cfg->phy_mode) < 0) {
+#else
 		port_cfg->phy_mode = of_get_phy_mode(port_np);
 		if (port_cfg->phy_mode < 0) {
+#endif
 			dev_info(gsw->dev, "incorrect phy-mode %d\n", port);
 			continue;
 		}
@@ -588,9 +592,12 @@ static void mt753x_connect_internal_phys(struct gsw_mt753x *gsw,
 
 		if (phyad >= MT753X_NUM_PHYS)
 			continue;
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0)
+		if (of_get_phy_mode(phy_np, &iface) < 0) {
+#else
 		iface = of_get_phy_mode(phy_np);
 		if (iface < 0) {
+#endif
 			dev_info(gsw->dev, "incorrect phy-mode %d for PHY %d\n",
 				 iface, phyad);
 			continue;
@@ -812,7 +819,11 @@ static int mt753x_remove(struct platform_device *pdev)
 		cancel_work_sync(&gsw->irq_worker);
 
 	if (gsw->reset_pin >= 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,0,0)
+		gpio_free(gsw->reset_pin);
+#else
 		devm_gpio_free(&pdev->dev, gsw->reset_pin);
+#endif
 
 #ifdef CONFIG_SWCONFIG
 	mt753x_swconfig_destroy(gsw);
