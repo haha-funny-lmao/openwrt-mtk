@@ -1,0 +1,31 @@
+--- a/drivers/net/phy/Kconfig
++++ b/drivers/net/phy/Kconfig
+@@ -149,6 +149,17 @@ config MESON_GXL_PHY
+ 	help
+ 	  Currently has a driver for the Amlogic Meson GXL Internal PHY
+ 
++config AIROHA_EN8811H_PHY
++	tristate "Airoha EN8811H 2.5G Gigabit PHY"
++	help
++	  Currently supports the Airoha EN8811H PHY.
++
++config AIROHA_EN8811H_PHY_DEBUGFS
++	bool "EN8811H debugfs support"
++	depends on AIROHA_EN8811H_PHY
++	help
++	  Enable creation of debugfs files for the EN8811H drivers.
++
+ config ADIN_PHY
+ 	tristate "Analog Devices Industrial Ethernet PHYs"
+ 	help
+--- a/drivers/net/phy/Makefile
++++ b/drivers/net/phy/Makefile
+@@ -47,6 +47,8 @@ obj-y				+= $(sfp-obj-y) $(sfp-obj-m)
+ 
+ obj-$(CONFIG_ADIN_PHY)		+= adin.o
+ obj-$(CONFIG_AMD_PHY)		+= amd.o
++air_en8811h-y			:= air_en8811h_main.o air_en8811h_api.o
++obj-$(CONFIG_AIROHA_EN8811H_PHY)	+= air_en8811h.o
+ obj-$(CONFIG_AQUANTIA_PHY)	+= aquantia/
+ obj-$(CONFIG_AT803X_PHY)	+= at803x.o
+ obj-$(CONFIG_AX88796B_PHY)	+= ax88796b.o
