@@ -2440,13 +2440,8 @@ int hnat_init_debugfs(struct mtk_hnat *h)
 		h->regset[i]->base = h->ppe_base[i];
 
 		snprintf(name, sizeof(name), "regdump%ld", i);
-		file = debugfs_create_regset32(name, S_IRUGO,
+		 debugfs_create_regset32(name, S_IRUGO,
 					       root, h->regset[i]);
-		if (!file) {
-			dev_notice(h->dev, "%s:err at %d\n", __func__, __LINE__);
-			ret = -ENOMEM;
-			goto err1;
-		}
 	}
 
 	debugfs_create_file("all_entry", S_IRUGO, root, h, &hnat_debug_fops);
