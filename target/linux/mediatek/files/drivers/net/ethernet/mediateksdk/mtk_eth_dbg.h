@@ -267,8 +267,8 @@ static inline bool mt7530_exist(struct mtk_eth *eth)
 }
 #endif
 
-extern u32 _mtk_mdio_read(struct mtk_eth *eth, int phy_addr, int phy_reg);
-extern u32 _mtk_mdio_write(struct mtk_eth *eth, int phy_addr,
+extern int _mtk_mdio_read(struct mtk_eth *eth, int phy_addr, int phy_reg);
+extern int _mtk_mdio_write(struct mtk_eth *eth, int phy_addr,
 		    int phy_reg, u16 write_data);
 
 extern atomic_t force;

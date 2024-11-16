@@ -15,6 +15,7 @@
 #include <linux/u64_stats_sync.h>
 #include <linux/refcount.h>
 #include <linux/phylink.h>
+#include <linux/bitfield.h>
 
 #define MTK_QDMA_PAGE_SIZE	2048
 #define	MTK_MAX_RX_LENGTH	1536
@@ -1346,4 +1347,25 @@ void mtk_gdm_config(struct mtk_eth *eth, u32 id, u32 config);
 void ethsys_reset(struct mtk_eth *eth, u32 reset_bits);
 int mtk_soc_extphy_init(struct mtk_eth *eth, int addr);
 int mtk_mdio_busy_wait(struct mtk_eth *eth);
+
+#define MII_ADDR_C45		(1<<30)
+#define MII_DEVADDR_C45_SHIFT	16
+#define MII_DEVADDR_C45_MASK	GENMASK(20, 16)
+#define MII_REGADDR_C45_MASK	GENMASK(15, 0)
+
+static inline u16 mdiobus_c45_devad(u32 regnum)
+{
+	return FIELD_GET(MII_DEVADDR_C45_MASK, regnum);
+}
+
+static inline u32 mdiobus_c45_addr(int devad, u16 regnum)
+{
+	return MII_ADDR_C45 | devad << MII_DEVADDR_C45_SHIFT | regnum;
+}
+
+static inline u16 mdiobus_c45_regad(u32 regnum)
+{
+	return FIELD_GET(MII_REGADDR_C45_MASK, regnum);
+}
+
 #endif /* MTK_ETH_H */

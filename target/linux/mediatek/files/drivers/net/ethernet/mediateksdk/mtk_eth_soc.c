@@ -102,36 +102,21 @@ int mtk_mdio_busy_wait(struct mtk_eth *eth)
 	}
 
 	dev_err(eth->dev, "mdio: MDIO timeout\n");
-	return -1;
+	return -ETIMEDOUT;
 }
 
-u32 _mtk_mdio_write(struct mtk_eth *eth, int phy_addr,
-			   int phy_reg, u16 write_data)
+int _mtk_mdio_write_c22(struct mtk_eth *eth, u32 phy_addr, u32 phy_reg,
+			       u32 write_data)
 {
 	if (mtk_mdio_busy_wait(eth))
 		return -1;
 
 	write_data &= 0xffff;
 
-	if (phy_reg & MII_ADDR_C45) {
-		mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_ADDR_C45 |
-			((mdiobus_c45_devad(phy_reg) & 0x1f) << PHY_IAC_REG_SHIFT) |
-			((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | mdiobus_c45_regad(phy_reg),
-			MTK_PHY_IAC);
-
-		if (mtk_mdio_busy_wait(eth))
-			return -1;
-
-		mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_WRITE |
-			((mdiobus_c45_devad(phy_reg) & 0x1f) << PHY_IAC_REG_SHIFT) |
-			((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | write_data,
-			MTK_PHY_IAC);
-	} else {
-		mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START | PHY_IAC_WRITE |
-			((phy_reg & 0x1f) << PHY_IAC_REG_SHIFT) |
-			((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | write_data,
-			MTK_PHY_IAC);
-	}
+	mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START | PHY_IAC_WRITE |
+		((phy_reg & 0x1f) << PHY_IAC_REG_SHIFT) |
+		((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | write_data,
+		MTK_PHY_IAC);
 
 	if (mtk_mdio_busy_wait(eth))
 		return -1;
@@ -139,32 +124,56 @@ u32 _mtk_mdio_write(struct mtk_eth *eth, int phy_addr,
 	return 0;
 }
 
-u32 _mtk_mdio_read(struct mtk_eth *eth, int phy_addr, int phy_reg)
+int _mtk_mdio_write_c45(struct mtk_eth *eth, u32 phy_addr,
+			       u32 devad, u32 phy_reg, u32 write_data)
+{
+	if (mtk_mdio_busy_wait(eth))
+		return -1;
+
+	write_data &= 0xffff;
+
+	mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_ADDR_C45 |
+		((devad & 0x1f) << PHY_IAC_REG_SHIFT) |
+		((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | mdiobus_c45_regad(phy_reg),
+		MTK_PHY_IAC);
+
+	if (mtk_mdio_busy_wait(eth))
+		return -1;
+
+	mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_WRITE |
+		((devad & 0x1f) << PHY_IAC_REG_SHIFT) |
+		((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | write_data,
+		MTK_PHY_IAC);
+
+	if (mtk_mdio_busy_wait(eth))
+		return -1;
+
+	return 0;
+}
+
+int _mtk_mdio_write(struct mtk_eth *eth, int phy_addr,
+			   int phy_reg, u16 write_data)
+{
+	if (phy_reg & MII_ADDR_C45) {
+		return _mtk_mdio_write_c45(eth, phy_addr,
+				mdiobus_c45_devad(phy_reg), phy_reg, write_data);
+	}
+
+	return _mtk_mdio_write_c22(eth, phy_addr,
+			phy_reg, write_data);
+}
+
+int _mtk_mdio_read_c22(struct mtk_eth *eth, u32 phy_addr, u32 phy_reg)
 {
 	u32 d;
 
 	if (mtk_mdio_busy_wait(eth))
 		return 0xffff;
 
-	if (phy_reg & MII_ADDR_C45) {
-		mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_ADDR_C45 |
-			((mdiobus_c45_devad(phy_reg) & 0x1f) << PHY_IAC_REG_SHIFT) |
-			((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | mdiobus_c45_regad(phy_reg),
-			MTK_PHY_IAC);
-
-		if (mtk_mdio_busy_wait(eth))
-			return 0xffff;
-
-		mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_READ_C45 |
-			((mdiobus_c45_devad(phy_reg) & 0x1f) << PHY_IAC_REG_SHIFT) |
-			((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT),
-			MTK_PHY_IAC);
-	} else {
-		mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START | PHY_IAC_READ |
-			((phy_reg & 0x1f) << PHY_IAC_REG_SHIFT) |
-			((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT),
-			MTK_PHY_IAC);
-	}
+	mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START | PHY_IAC_READ |
+		((phy_reg & 0x1f) << PHY_IAC_REG_SHIFT) |
+		((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT),
+		MTK_PHY_IAC);
 
 	if (mtk_mdio_busy_wait(eth))
 		return 0xffff;
@@ -172,6 +181,76 @@ u32 _mtk_mdio_read(struct mtk_eth *eth, int phy_addr, int phy_reg)
 	d = mtk_r32(eth, MTK_PHY_IAC) & 0xffff;
 
 	return d;
+}
+
+
+int _mtk_mdio_read_c45(struct mtk_eth *eth, u32 phy_addr,
+			      u32 devad, u32 phy_reg)
+{
+	u32 d;
+
+	if (mtk_mdio_busy_wait(eth))
+		return 0xffff;
+
+	mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_ADDR_C45 |
+		((devad & 0x1f) << PHY_IAC_REG_SHIFT) |
+		((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT) | mdiobus_c45_regad(phy_reg),
+		MTK_PHY_IAC);
+
+	if (mtk_mdio_busy_wait(eth))
+		return 0xffff;
+
+	mtk_w32(eth, PHY_IAC_ACCESS | PHY_IAC_START_C45 | PHY_IAC_READ_C45 |
+		((devad & 0x1f) << PHY_IAC_REG_SHIFT) |
+		((phy_addr & 0x1f) << PHY_IAC_ADDR_SHIFT),
+		MTK_PHY_IAC);
+
+	if (mtk_mdio_busy_wait(eth))
+		return 0xffff;
+
+	d = mtk_r32(eth, MTK_PHY_IAC) & 0xffff;
+
+	return d;
+}
+
+int _mtk_mdio_read(struct mtk_eth *eth, int phy_addr, int phy_reg)
+{
+	if (phy_reg & MII_ADDR_C45) {
+		return _mtk_mdio_read_c45(eth, phy_addr, mdiobus_c45_devad(phy_reg), phy_reg);
+	}
+
+	return _mtk_mdio_read_c22(eth, phy_addr, phy_reg);
+}
+
+int mtk_mdio_write_c22(struct mii_bus *bus, int phy_addr,
+			      int phy_reg, u16 val)
+{
+	struct mtk_eth *eth = bus->priv;
+
+	return _mtk_mdio_write_c22(eth, phy_addr, phy_reg, val);
+}
+
+int mtk_mdio_write_c45(struct mii_bus *bus, int phy_addr,
+			      int devad, int phy_reg, u16 val)
+{
+	struct mtk_eth *eth = bus->priv;
+
+	return _mtk_mdio_write_c45(eth, phy_addr, devad, phy_reg, val);
+}
+
+int mtk_mdio_read_c22(struct mii_bus *bus, int phy_addr, int phy_reg)
+{
+	struct mtk_eth *eth = bus->priv;
+
+	return _mtk_mdio_read_c22(eth, phy_addr, phy_reg);
+}
+
+int mtk_mdio_read_c45(struct mii_bus *bus, int phy_addr, int devad,
+			     int phy_reg)
+{
+	struct mtk_eth *eth = bus->priv;
+
+	return _mtk_mdio_read_c45(eth, phy_addr, devad, phy_reg);
 }
 
 static int mtk_mdio_write(struct mii_bus *bus, int phy_addr,
@@ -441,48 +520,6 @@ init_err:
 		mac->id, phy_modes(state->interface), err);
 }
 
-static int mtk_mac_link_state(struct phylink_config *config,
-			      struct phylink_link_state *state)
-{
-	struct mtk_mac *mac = container_of(config, struct mtk_mac,
-					   phylink_config);
-	u32 pmsr = mtk_r32(mac->hw, MTK_MAC_MSR(mac->id));
-
-	state->link = (pmsr & MAC_MSR_LINK);
-	state->duplex = (pmsr & MAC_MSR_DPX) >> 1;
-
-	switch (pmsr & (MAC_MSR_SPEED_1000 | MAC_MSR_SPEED_100)) {
-	case 0:
-		state->speed = SPEED_10;
-		break;
-	case MAC_MSR_SPEED_100:
-		state->speed = SPEED_100;
-		break;
-	case MAC_MSR_SPEED_1000:
-		state->speed = SPEED_1000;
-		break;
-	default:
-		state->speed = SPEED_UNKNOWN;
-		break;
-	}
-
-	state->pause &= (MLO_PAUSE_RX | MLO_PAUSE_TX);
-	if (pmsr & MAC_MSR_RX_FC)
-		state->pause |= MLO_PAUSE_RX;
-	if (pmsr & MAC_MSR_TX_FC)
-		state->pause |= MLO_PAUSE_TX;
-
-	return 1;
-}
-
-static void mtk_mac_an_restart(struct phylink_config *config)
-{
-	struct mtk_mac *mac = container_of(config, struct mtk_mac,
-					   phylink_config);
-
-	mtk_sgmii_restart_an(mac->hw, mac->id);
-}
-
 static void mtk_mac_link_down(struct phylink_config *config, unsigned int mode,
 			      phy_interface_t interface)
 {
@@ -494,9 +531,10 @@ static void mtk_mac_link_down(struct phylink_config *config, unsigned int mode,
 	mtk_w32(mac->hw, mcr, MTK_MAC_MCR(mac->id));
 }
 
-static void mtk_mac_link_up(struct phylink_config *config, unsigned int mode,
-			    phy_interface_t interface,
-			    struct phy_device *phy)
+static void mtk_mac_link_up(struct phylink_config *config,
+                            struct phy_device *phy,
+                            unsigned int mode, phy_interface_t interface,
+                            int speed, int duplex, bool tx_pause, bool rx_pause)
 {
 	struct mtk_mac *mac = container_of(config, struct mtk_mac,
 					   phylink_config);
@@ -585,17 +623,10 @@ static void mtk_validate(struct phylink_config *config,
 
 	linkmode_and(supported, supported, mask);
 	linkmode_and(state->advertising, state->advertising, mask);
-
-	/* We can only operate at 2500BaseX or 1000BaseX. If requested
-	 * to advertise both, only report advertising at 2500BaseX.
-	 */
-	phylink_helper_basex_speed(state);
 }
 
 static const struct phylink_mac_ops mtk_phylink_ops = {
 	.validate = mtk_validate,
-	.mac_link_state = mtk_mac_link_state,
-	.mac_an_restart = mtk_mac_an_restart,
 	.mac_config = mtk_mac_config,
 	.mac_link_down = mtk_mac_link_down,
 	.mac_link_up = mtk_mac_link_up,
@@ -624,8 +655,10 @@ static int mtk_mdio_init(struct mtk_eth *eth)
 	}
 
 	eth->mii_bus->name = "mdio";
-	eth->mii_bus->read = mtk_mdio_read;
-	eth->mii_bus->write = mtk_mdio_write;
+	eth->mii_bus->read = mtk_mdio_read_c22;
+	eth->mii_bus->write = mtk_mdio_write_c22;
+	eth->mii_bus->read_c45 = mtk_mdio_read_c45;
+	eth->mii_bus->write_c45 = mtk_mdio_write_c45;
 	eth->mii_bus->priv = eth;
 	eth->mii_bus->parent = eth->dev;
 
@@ -785,7 +818,7 @@ static void mtk_get_stats64(struct net_device *dev,
 	}
 
 	do {
-		start = u64_stats_fetch_begin_irq(&hw_stats->syncp);
+		start = u64_stats_fetch_begin(&hw_stats->syncp);
 		storage->rx_packets = hw_stats->rx_packets;
 		storage->tx_packets = hw_stats->tx_packets;
 		storage->rx_bytes = hw_stats->rx_bytes;
@@ -797,7 +830,7 @@ static void mtk_get_stats64(struct net_device *dev,
 		storage->rx_crc_errors = hw_stats->rx_fcs_errors;
 		storage->rx_errors = hw_stats->rx_checksum_errors;
 		storage->tx_aborted_errors = hw_stats->tx_skip;
-	} while (u64_stats_fetch_retry_irq(&hw_stats->syncp, start));
+	} while (u64_stats_fetch_retry(&hw_stats->syncp, start));
 
 	storage->tx_errors = dev->stats.tx_errors;
 	storage->rx_dropped = dev->stats.rx_dropped;
@@ -2498,7 +2531,7 @@ static void mtk_dma_free(struct mtk_eth *eth)
 	}
 }
 
-static void mtk_tx_timeout(struct net_device *dev)
+static void mtk_tx_timeout(struct net_device *dev, unsigned int txqueue)
 {
 	struct mtk_mac *mac = netdev_priv(dev);
 	struct mtk_eth *eth = mac->hw;
@@ -3001,14 +3034,12 @@ static int __init mtk_init(struct net_device *dev)
 {
 	struct mtk_mac *mac = netdev_priv(dev);
 	struct mtk_eth *eth = mac->hw;
-	const char *mac_addr;
+	int err;
 
-	mac_addr = of_get_mac_address(mac->of_node);
-	if (!IS_ERR(mac_addr))
-		ether_addr_copy(dev->dev_addr, mac_addr);
+	err = of_get_ethdev_address(mac->of_node, dev);
 
 	/* If the mac address is invalid, use random mac address  */
-	if (!is_valid_ether_addr(dev->dev_addr)) {
+	if (err) {
 		eth_hw_addr_random(dev);
 		dev_err(eth->dev, "generated random MAC address %pM\n",
 			dev->dev_addr);
@@ -3312,11 +3343,11 @@ static void mtk_get_ethtool_stats(struct net_device *dev,
 
 	do {
 		data_dst = data;
-		start = u64_stats_fetch_begin_irq(&hwstats->syncp);
+		start = u64_stats_fetch_begin(&hwstats->syncp);
 
 		for (i = 0; i < ARRAY_SIZE(mtk_ethtool_stats); i++)
 			*data_dst++ = *(data_src + mtk_ethtool_stats[i].offset);
-	} while (u64_stats_fetch_retry_irq(&hwstats->syncp, start));
+	} while (u64_stats_fetch_retry(&hwstats->syncp, start));
 }
 
 static int mtk_get_rxnfc(struct net_device *dev, struct ethtool_rxnfc *cmd,
@@ -3412,8 +3443,9 @@ static int mtk_add_mac(struct mtk_eth *eth, struct device_node *np)
 {
 	const __be32 *_id = of_get_property(np, "reg", NULL);
 	struct phylink *phylink;
-	int phy_mode, id, err;
+	int id, err;
 	struct mtk_mac *mac;
+	phy_interface_t phy_mode;
 
 	if (!_id) {
 		dev_err(eth->dev, "missing mac id\n");
@@ -3458,8 +3490,8 @@ static int mtk_add_mac(struct mtk_eth *eth, struct device_node *np)
 	mac->hw_stats->reg_offset = id * MTK_STAT_OFFSET;
 
 	/* phylink create */
-	phy_mode = of_get_phy_mode(np);
-	if (phy_mode < 0) {
+	err = of_get_phy_mode(np, &phy_mode);
+	if (err) {
 		dev_err(eth->dev, "incorrect phy-mode\n");
 		err = -EINVAL;
 		goto free_netdev;
@@ -3472,6 +3504,46 @@ static int mtk_add_mac(struct mtk_eth *eth, struct device_node *np)
 
 	mac->phylink_config.dev = &eth->netdev[id]->dev;
 	mac->phylink_config.type = PHYLINK_NETDEV;
+
+	mac->phylink_config.mac_capabilities = MAC_ASYM_PAUSE | MAC_SYM_PAUSE |
+		MAC_10 | MAC_100 | MAC_1000 | MAC_2500FD;
+
+	/* MT7623 gmac0 is now missing its speed-specific PLL configuration
+	 * in its .mac_config method (since state->speed is not valid there.
+	 * Disable support for MII, GMII and RGMII.
+	 */
+	if (!MTK_HAS_CAPS(eth->soc->caps, MTK_SOC_MT7628) || mac->id != 0) {
+		__set_bit(PHY_INTERFACE_MODE_MII,
+			  mac->phylink_config.supported_interfaces);
+		__set_bit(PHY_INTERFACE_MODE_GMII,
+			  mac->phylink_config.supported_interfaces);
+
+		if (MTK_HAS_CAPS(mac->hw->soc->caps, MTK_RGMII))
+			phy_interface_set_rgmii(mac->phylink_config.supported_interfaces);
+	}
+
+	if (MTK_HAS_CAPS(mac->hw->soc->caps, MTK_GMAC1_TRGMII) && !mac->id)
+		__set_bit(PHY_INTERFACE_MODE_TRGMII,
+			  mac->phylink_config.supported_interfaces);
+
+	/* TRGMII is not permitted on MT7621 if using DDR2 */
+	if (MTK_HAS_CAPS(mac->hw->soc->caps, MTK_GMAC1_TRGMII) &&
+	    MTK_HAS_CAPS(mac->hw->soc->caps, MTK_TRGMII_MT7621_CLK)) {
+		u32 val;
+		regmap_read(eth->ethsys, ETHSYS_SYSCFG, &val);
+		if (val & SYSCFG_DRAM_TYPE_DDR2)
+			__clear_bit(PHY_INTERFACE_MODE_TRGMII,
+				    mac->phylink_config.supported_interfaces);
+	}
+
+	if (MTK_HAS_CAPS(mac->hw->soc->caps, MTK_SGMII)) {
+		__set_bit(PHY_INTERFACE_MODE_SGMII,
+			  mac->phylink_config.supported_interfaces);
+		__set_bit(PHY_INTERFACE_MODE_1000BASEX,
+			  mac->phylink_config.supported_interfaces);
+		__set_bit(PHY_INTERFACE_MODE_2500BASEX,
+			  mac->phylink_config.supported_interfaces);
+	}
 
 	phylink = phylink_create(&mac->phylink_config,
 				 of_fwnode_handle(mac->of_node),
@@ -3732,14 +3804,14 @@ static int mtk_probe(struct platform_device *pdev)
 	 * for NAPI to work
 	 */
 	init_dummy_netdev(&eth->dummy_dev);
-	netif_napi_add(&eth->dummy_dev, &eth->tx_napi, mtk_napi_tx,
+	netif_napi_add_weight(&eth->dummy_dev, &eth->tx_napi, mtk_napi_tx,
 		       MTK_NAPI_WEIGHT);
-	netif_napi_add(&eth->dummy_dev, &eth->rx_napi[0].napi, mtk_napi_rx,
+	netif_napi_add_weight(&eth->dummy_dev, &eth->rx_napi[0].napi, mtk_napi_rx,
 		       MTK_NAPI_WEIGHT);
 
 	if (MTK_HAS_CAPS(eth->soc->caps, MTK_RSS)) {
 		for (i = 1; i < MTK_RX_NAPI_NUM; i++)
-			netif_napi_add(&eth->dummy_dev, &eth->rx_napi[i].napi,
+			netif_napi_add_weight(&eth->dummy_dev, &eth->rx_napi[i].napi,
 				       mtk_napi_rx, MTK_NAPI_WEIGHT);
 	}
 
